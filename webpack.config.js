@@ -77,7 +77,7 @@ module.exports = {
                     {
                         loader: 'url-loader',
                         options: {
-                            limit: 1,    // 小于8k的图片自动转成base64格式，并且不会存在实体图片
+                            limit: 5120,    // 小于8k的图片自动转成base64格式，并且不会存在实体图片
                             outputPath: 'img/'   // 图片打包后存放的目录
                         }
                     }
