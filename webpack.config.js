@@ -1,13 +1,58 @@
 let path = require('path');
 let HtmlWebpackPlugin = require('html-webpack-plugin');
 let CleanWebpackPlugin = require('clean-webpack-plugin');
-let UglifyJsPlugin = require('uglifyjs-webpack-plugin')
+let UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 let OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+let glob = require('glob');
+//设定搜索多页面入口路径
+let globReg = 'src/*.html'
+
+//获取多页面基于项目根目录的相对路径
+function getHtmlPath() {
+    let globPath = globReg;
+    let filesPath = glob.sync(globPath);
+    return filesPath;
+}
+//构建webpack多入口entry
+function getEntry() {
+    let entryObj = {}
+    getHtmlPath().forEach(item => {
+        let filePath = item.replace(/(.*\/)*([^.]+).*/ig, '$1');
+        let fileName = item.replace(/(.*\/)*([^.]+).*/ig, '$2');
+        entryObj[fileName] = './'+filePath+'js/'+fileName+'.js';
+    });
+    return entryObj
+}
+//构建HtmlWebpackPlugin的配置
+function getHtmlPlugin() {
+    let HtmlPlugin = [];
+    getHtmlPath().forEach(item => {
+        let fileName = item.replace(/(.*\/)*([^.]+).*/ig, '$2');
+        let fileExt = item.replace(/.+\./, '');
+        HtmlPlugin.push(new HtmlWebpackPlugin({
+            template: 'html-withimg-loader!'+item,
+            minify: {
+                //消除空格
+                collapseWhitespace: true
+            },
+            //为js文件添加一个hash尾号，防止缓存
+            hash: true,
+            filename: fileName+'.'+fileExt,
+            chunks: ['common', fileName]
+        }));
+    });
+    return HtmlPlugin;
+}
+//构建webpack的Plugins配置
+function getPlugins(){
+    let plugins = [];
+    //默认添加插件，清空旧有编译文件
+    plugins.push(new CleanWebpackPlugin('dist'));
+    plugins = plugins.concat(getHtmlPlugin());
+    return plugins;
+}
 module.exports = {
-    entry: {
-        index: './src/js/index.js',
-        login: './src/js/login.js'
-    },
+    entry: getEntry(),
     output: {
         filename: 'js/[name].js',
         path: path.resolve('dist')
@@ -28,28 +73,7 @@ module.exports = {
             new OptimizeCSSAssetsPlugin({})
         ]
     },
-    plugins: [
-        // 打包前先清空
-        new CleanWebpackPlugin('dist'),
-        new HtmlWebpackPlugin({
-            template: 'html-withimg-loader!./src/index.html',
-            minify: {
-                collapseWhitespace: true    //消除空格
-            },
-            hash: true,
-            filename: 'index.html',
-            chunks: ['common', 'index']   // 对应关系,index.js对应的是index.html
-        }),
-        new HtmlWebpackPlugin({
-            template: 'html-withimg-loader!./src/login.html',
-            minify: {
-                collapseWhitespace: true
-            },
-            hash: true,
-            filename: 'login.html',
-            chunks: ['common', 'login']   // 对应关系,login.js对应的是login.html
-        })
-    ],
+    plugins: getPlugins(),
     module: {
         rules: [
             {
